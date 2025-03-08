@@ -14,6 +14,8 @@
       };
     in pkgs.mkShell {
       packages = [
+        pkgs.bashInteractive
+
         pkgs.libGL
 
         # X11 dependencies
