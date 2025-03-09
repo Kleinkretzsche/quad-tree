@@ -1,6 +1,6 @@
 #include "quadtree.h"
 
-Vector2 vec2_init(float x, float y) {
+Vector2 vec2(float x, float y) {
     return (Vector2){ x, y };
 }
 
@@ -20,7 +20,7 @@ qt *qt_create(void) {
 
     ret->points = malloc(sizeof(Vector2) * QT_CAPACITY);
     ret->size = 0;
-    ret->bounds = aabb_init(vec2_init(0.5, 0.5), 0.5);
+    ret->bounds = aabb_init(vec2(0.5, 0.5), 0.5);
     ret->ne = NULL;
     ret->se = NULL;
     ret->sw = NULL;
@@ -32,7 +32,7 @@ qt *qt_create(void) {
 qt *qt_create_child(qt *parent, Quad q) {
     Vector2 center = parent->bounds.center;
     float half_dim = parent->bounds.half_dim;
-    float quad_dim = half_dim / 2;
+    float quad_dim = half_dim / 2.0f;
     switch(q) {
         case NE:
             center.x += quad_dim; 
@@ -61,7 +61,7 @@ qt *qt_create_child(qt *parent, Quad q) {
 
 void qt_subdivide(qt *tree) {
     if (tree == NULL) return;
-    Vector2 nw_center = vec2_init(
+    Vector2 nw_center = vec2(
         tree->bounds.center.x * 0.5, 
         tree->bounds.center.y * 0.5
     );
@@ -82,12 +82,15 @@ bool qt_insert(qt *tree, Vector2 point) {
         return true;
     }
 
-    if (tree->ne == NULL) qt_subdivide(tree);
+    if (tree->ne == NULL) {
+        qt_subdivide(tree);
+    }
 
     if (qt_insert(tree->ne, point)) return true;
     if (qt_insert(tree->se, point)) return true;
     if (qt_insert(tree->sw, point)) return true;
     if (qt_insert(tree->nw, point)) return true;
+    printf("insert failed");
     return false;
 }
 
@@ -101,12 +104,4 @@ void qt_print(qt *tree) {
     qt_print(tree->sw);
     qt_print(tree->nw);
     printf("\n");
-}
-
-int main(void) {
-    qt *t = qt_create();
-    qt_insert(t, vec2_init(0.4, 0.3));
-    qt_insert(t, vec2_init(0.3, 0.3));
-    qt_print(t);
-    return 0;
 }

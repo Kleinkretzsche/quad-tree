@@ -1,7 +1,13 @@
 #ifndef QT_DEF
 #define QT_DEF
 
-#define QT_CAPACITY 1
+#include "raylib.h"
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define QT_CAPACITY 8
 
 typedef enum {
     NE,
@@ -9,11 +15,6 @@ typedef enum {
     SW,
     NW,
 } Quad;
-
-typedef struct {
-    float x;
-    float y;
-}Vector2;
 
 typedef struct {
     Vector2 center;
@@ -32,7 +33,7 @@ typedef struct qt{
     struct qt *nw;
 } qt;
 
-Vector2 vec2_init(float x, float y);
+Vector2 vec2(float x, float y);
 
 AABB aabb_init(Vector2 center, float half_dim);
 bool aabb_contains_point(AABB region, Vector2 point);
