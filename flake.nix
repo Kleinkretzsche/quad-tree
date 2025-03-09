@@ -29,6 +29,7 @@
         # Uncomment the line below if you want to build Raylib with web support
         # pkgs.emscripten
       ];
+      buildInputs = [ pkgs.bashInteractive ];
     };
   };
 }

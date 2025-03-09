@@ -1,43 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
-#define QT_CAPACITY 1
-
-typedef enum {
-    NE,
-    SE,
-    SW,
-    NW,
-} Quad;
-
-typedef struct {
-    float x;
-    float y;
-}Vector2;
-
-typedef struct {
-    Vector2 center;
-    float half_dim;
-} AABB;
-
-typedef struct qt{
-    AABB bounds;
-    size_t size;
-
-    Vector2 *points;
-
-    struct qt *ne;
-    struct qt *se;
-    struct qt *sw;
-    struct qt *nw;
-} qt;
-
-Vector2 vec2_init(float x, float y);
-
-AABB aabb_init(Vector2 center, float half_dim);
-
-qt *qt_create(void);
+#include "quadtree.h"
 
 Vector2 vec2_init(float x, float y) {
     return (Vector2){ x, y };
@@ -144,7 +105,6 @@ void qt_print(qt *tree) {
 
 int main(void) {
     qt *t = qt_create();
-    // printf("%d\n", qt_insert(t, vec2_init(0.3, 0.4)));
     qt_insert(t, vec2_init(0.4, 0.3));
     qt_insert(t, vec2_init(0.3, 0.3));
     qt_print(t);
