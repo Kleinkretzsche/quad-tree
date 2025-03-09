@@ -54,7 +54,7 @@ void  qt_subdivide(qt *tree);
 void  qt_draw(qt *tree);
 void  qt_calc_avg_err(qt *tree);
 qt   *qt_create_child(qt *parent, Quad q);
-float qt_get_max_err(qt *parent);
+Quad qt_get_max_err(qt *parent);
 void  qt_draw(qt *tree);
 
 Vector2 coordToScreen(float x, float y);

@@ -61,6 +61,8 @@ float aabb_err(Image img, AABB aabb) {
         }
     }
 
+    if (n == 0) return 0;
+
     Color avg = (Color){avg_r / n, avg_g / n, avg_b / n, avg_a / n}; 
 
     uint64_t dev_r = 0;
@@ -85,24 +87,30 @@ void qt_calc_avg_err(qt *tree) {
     AABB aabb = tree->bounds;
     Image img = tree->img;
 
-    uint64_t avg_r = 0;
-    uint64_t avg_g = 0;
-    uint64_t avg_b = 0;
-    uint64_t avg_a = 0;
+    double avg_r = 0;
+    double avg_g = 0;
+    double avg_b = 0;
+    double avg_a = 0;
     uint64_t n = 0;
 
     for (int y = img.height * (aabb.center.y - aabb.half_dim); y < img.height * (aabb.center.y + aabb.half_dim); y++) {
         for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
             n++;
             Color c = GetImageColor(img, x, y);
-            avg_r += c.r;
-            avg_g += c.g;
-            avg_b += c.b;
-            avg_a += c.a;
+            avg_r += c.r / 255.0; 
+            avg_g += c.g / 255.0;
+            avg_b += c.b / 255.0;
+            avg_a += c.a / 255.0;
         }
     }
 
-    tree->avg = (Color){avg_r / n, avg_g / n, avg_b / n, avg_a / n}; 
+    if (n == 0) {
+        tree->avg = (Color){0,0,0,0};
+        tree->err = -1;
+        return;
+    }
+
+    tree->avg = (Color){avg_r * 255 / n, avg_g * 255 / n, avg_b * 255 / n, avg_a * 255 / n}; 
 
     uint64_t dev_r = 0;
     uint64_t dev_g = 0;
@@ -112,13 +120,13 @@ void qt_calc_avg_err(qt *tree) {
         for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
             n++;
             Color c = GetImageColor(img, x, y);
-            dev_r += fabs(c.r - tree->avg.r);
-            dev_g += fabs(c.g - tree->avg.g);
-            dev_b += fabs(c.b - tree->avg.b);
-            dev_a += fabs(c.a - tree->avg.a);
+            dev_r += (c.r - tree->avg.r) * (c.r - tree->avg.r);
+            dev_g += (c.g - tree->avg.g) * (c.g - tree->avg.g);
+            dev_b += (c.b - tree->avg.b) * (c.b - tree->avg.b);
+            dev_a += (c.a - tree->avg.a) * (c.a - tree->avg.a);
         }
     }
-    tree->err = dev_r / n + dev_g / n + dev_b / n + dev_a / n; 
+    tree->err = sqrt(dev_r / n * n + dev_g / n * n + dev_b / n * n + dev_a / n * n); 
 }
 
 qt *qt_create(Image img) {
@@ -170,21 +178,25 @@ qt *qt_create_child(qt *parent, Quad q) {
     return ret;
 }
 
-float qt_get_max_err(qt *parent) {
+Quad qt_get_max_err(qt *parent) {
     if (parent == NULL) return -1;
     if (parent->ne == NULL) {
         return parent->err;
     }
     float max_err = -1;
+    Quad q = -1;
     float errs[4];
     errs[0] = qt_get_max_err(parent->ne);
     errs[1] = qt_get_max_err(parent->se);
     errs[2] = qt_get_max_err(parent->sw);
     errs[3] = qt_get_max_err(parent->nw);
     for (int i = 0; i < 4; i++) {
-        if (errs[i] > max_err) max_err = errs[i];
+        if (errs[i] > max_err) {
+            max_err = errs[i];
+            q = i;
+        }
     }
-    return max_err;
+    return q;
 }
 
 void qt_subdivide(qt *tree) {
@@ -197,6 +209,23 @@ void qt_subdivide(qt *tree) {
         tree->sw = qt_create_child(tree, SW);
         return;
     }
+    switch (qt_get_max_err(tree)) {
+        case NE:
+            qt_subdivide(tree->ne);
+        break;
+        case SE:
+            qt_subdivide(tree->se);
+        break;
+        case SW:
+            qt_subdivide(tree->sw);
+        break;
+        case NW:
+            qt_subdivide(tree->nw);
+        break;
+        default:
+        printf("couldn't subdivide");
+    }
+
 }
 
 float GetRandomFloat(float from, float to) {

@@ -26,7 +26,7 @@ int main(void) {
             }
 
             ClearBackground(WHITE);
-            DrawTexture(texture, screen_width/2 - texture.width/2, screen_height/2 - texture.height/2, WHITE);
+            // DrawTexture(texture, screen_width/2 - texture.width/2, screen_height/2 - texture.height/2, WHITE);
             qt_draw(t);
 
         EndDrawing();
