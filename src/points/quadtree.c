@@ -105,3 +105,42 @@ void qt_print(qt *tree) {
     qt_print(tree->nw);
     printf("\n");
 }
+
+Vector2 coordToScreen(float x, float y) {
+    return vec2(WIDTH * x, HEIGHT * y);
+}
+
+float GetRandomFloat(float from, float to) {
+    return from + (to-from)*(float)GetRandomValue(0, INT_MAX) / INT_MAX;
+}
+
+void aabb_draw(AABB box) {
+    DrawRectangleLines(
+        WIDTH * (box.center.x - box.half_dim), 
+        HEIGHT * (box.center.y - box.half_dim),
+        WIDTH * (box.half_dim * 2),
+        HEIGHT * (box.half_dim * 2),
+        BLACK
+    );
+}
+
+void qt_draw(qt *tree) {
+    if (tree == NULL) return;
+    for (int i = 0; i < tree->size; i++) {
+        // TODO find a good way to draw all points
+    }
+    aabb_draw(tree->bounds);
+    qt_draw(tree->se);
+    qt_draw(tree->ne);
+    qt_draw(tree->sw);
+    qt_draw(tree->nw);
+}
+
+void qt_fill(qt *tree, int count) {
+    for (int i = 0; i < count; i++) {
+        float r1 = GetRandomFloat(0.0, 1.0);
+        float r2 = GetRandomFloat(0.0, 1.0);
+        qt_insert(tree, vec2(r1, r2));
+    }
+}
+
