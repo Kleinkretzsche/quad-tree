@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <time.h>
+#include <limits.h>
 
 #include "raylib.h"
 #include "quadtree.h"
@@ -9,6 +10,10 @@
 
 Vector2 coordToScreen(float x, float y) {
     return vec2(WIDTH * x, HEIGHT * y);
+}
+
+float GetRandomFloat(float from, float to) {
+    return from + (to-from)*(float)GetRandomValue(0, INT_MAX) / INT_MAX;
 }
 
 void drawAABB(AABB box) {
@@ -24,8 +29,7 @@ void drawAABB(AABB box) {
 void drawQuadTree(qt *tree) {
     if (tree == NULL) return;
     for (int i = 0; i < tree->size; i++) {
-        // DrawCircleV(coordToScreen(tree->points[i].x, tree->points[i].y), 5, BLUE);
-        DrawPixelV(coordToScreen(tree->points[i].x, tree->points[i].y), BLUE);
+        // TODO find a good way to draw all points
     }
     drawAABB(tree->bounds);
     drawQuadTree(tree->ne);
@@ -36,25 +40,20 @@ void drawQuadTree(qt *tree) {
 
 void qt_fill(qt *tree, int count) {
     for (int i = 0; i < count; i++) {
-        float r1 = ((float)rand())/RAND_MAX;
-        float r2 = ((float)rand())/RAND_MAX;
+        float r1 = GetRandomFloat(0.0, 1.0);
+        float r2 = GetRandomFloat(0.0, 1.0);
         qt_insert(tree, vec2(r1, r2));
     }
 }
 
 int main(void) {
-    srand(time(NULL));
-
     SetTargetFPS(10);
     InitWindow(800, 400, "window");
 
     qt *t = qt_create();
 
     while (!WindowShouldClose()) {
-        //if (IsKeyPressed(KEY_SPACE)) {
-        if (true) {
-            qt_fill(t, 10);
-        }
+        qt_fill(t, 60);
         BeginDrawing();
 
             drawQuadTree(t);
