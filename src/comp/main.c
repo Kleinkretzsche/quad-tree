@@ -6,14 +6,15 @@
 #include "quadtree.h"
 
 int main(void) {
-    SetTargetFPS(10);
+    SetTargetFPS(100);
 
-    int screen_width = 1200;
-    int screen_height = 1200;
+    Image image = LoadImage("resources/fish.png");
+
+    int screen_width = image.width;
+    int screen_height = image.height;
 
     InitWindow(screen_width, screen_height, "window");
 
-    Image image = LoadImage("resources/fish.png");
     Texture2D texture = LoadTextureFromImage(image);
 
     qt *t = qt_create(image);
@@ -24,7 +25,6 @@ int main(void) {
             if (true) {
                 qt_subdivide(t);
             }
-
             ClearBackground(WHITE);
             // DrawTexture(texture, screen_width/2 - texture.width/2, screen_height/2 - texture.height/2, WHITE);
             qt_draw(t);

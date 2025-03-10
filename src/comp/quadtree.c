@@ -1,5 +1,7 @@
 #include "quadtree.h"
 
+#define SWAP(T, x, y) do { T SWAP = x; x = y; y = SWAP; } while (0)
+
 Vector2 vec2(float x, float y) {
     return (Vector2){ x, y };
 }
@@ -15,74 +17,6 @@ bool aabb_contains_point(AABB region, Vector2 point) {
         && point.y > (region.center.y - region.half_dim);
 }
 
-void aabb_draw(AABB box, Color color) {
-    DrawRectangle(
-        WIDTH  * (box.center.x - box.half_dim), 
-        HEIGHT * (box.center.y - box.half_dim),
-        WIDTH  * (box.half_dim * 2),
-        HEIGHT * (box.half_dim * 2),
-        color
-    );
-}
-
-Color aabb_avg(Image img, AABB aabb) {
-    uint64_t avg_r = 0;
-    uint64_t avg_g = 0;
-    uint64_t avg_b = 0;
-    uint64_t avg_a = 0;
-    uint64_t avg_count = 0;
-    for (int y = img.height * (aabb.center.y - aabb.half_dim); y < img.height * (aabb.center.y + aabb.half_dim); y++) {
-        for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
-            avg_count++;
-            Color c = GetImageColor(img, x, y);
-            avg_r += c.r;
-            avg_g += c.g;
-            avg_b += c.b;
-            avg_a += c.a;
-        }
-    }
-    return (Color){avg_r / avg_count, avg_g / avg_count, avg_b / avg_count, avg_a / avg_count}; 
-}
-
-float aabb_err(Image img, AABB aabb) {
-    uint64_t avg_r = 0;
-    uint64_t avg_g = 0;
-    uint64_t avg_b = 0;
-    uint64_t avg_a = 0;
-    uint64_t n = 0;
-    for (int y = img.height * (aabb.center.y - aabb.half_dim); y < img.height * (aabb.center.y + aabb.half_dim); y++) {
-        for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
-            n++;
-            Color c = GetImageColor(img, x, y);
-            avg_r += c.r;
-            avg_g += c.g;
-            avg_b += c.b;
-            avg_a += c.a;
-        }
-    }
-
-    if (n == 0) return 0;
-
-    Color avg = (Color){avg_r / n, avg_g / n, avg_b / n, avg_a / n}; 
-
-    uint64_t dev_r = 0;
-    uint64_t dev_g = 0;
-    uint64_t dev_b = 0;
-    uint64_t dev_a = 0;
-    for (int y = img.height * (aabb.center.y - aabb.half_dim); y < img.height * (aabb.center.y + aabb.half_dim); y++) {
-        for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
-            Color c = GetImageColor(img, x, y);
-            dev_r += fabs(c.r - avg.r);
-            dev_g += fabs(c.g - avg.g);
-            dev_b += fabs(c.b - avg.b);
-            dev_a += fabs(c.a - avg.a);
-        }
-    }
-    Color dev = (Color){dev_r / n, dev_g / n, dev_b / n, dev_a / n}; 
-    return dev.r + dev.g + dev.b + dev.a;
-
-}
-
 void qt_calc_avg_err(qt *tree) {
     AABB aabb = tree->bounds;
     Image img = tree->img;
@@ -93,8 +27,15 @@ void qt_calc_avg_err(qt *tree) {
     double avg_a = 0;
     uint64_t n = 0;
 
-    for (int y = img.height * (aabb.center.y - aabb.half_dim); y < img.height * (aabb.center.y + aabb.half_dim); y++) {
-        for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
+    int min_x = fmax(0, img.width * (aabb.center.x - aabb.half_dim));
+    int max_x = fmin(img.width, img.width * (aabb.center.x + aabb.half_dim));
+    int min_y = fmax(0, img.height * (aabb.center.y - aabb.half_dim));
+    int max_y = fmin(img.height, img.height * (aabb.center.y + aabb.half_dim));
+
+    printf("[RANGE] [%d, %d] x [%d %d]\n", min_x, max_x, min_y, max_y);
+
+    for (int y = min_y; y < max_y; y++) {
+        for (int x = min_x; x < max_x; x++) {
             n++;
             Color c = GetImageColor(img, x, y);
             avg_r += c.r / 255.0; 
@@ -116,17 +57,16 @@ void qt_calc_avg_err(qt *tree) {
     uint64_t dev_g = 0;
     uint64_t dev_b = 0;
     uint64_t dev_a = 0;
-    for (int y = img.height * (aabb.center.y - aabb.half_dim); y < img.height * (aabb.center.y + aabb.half_dim); y++) {
-        for (int x = img.width * (aabb.center.x - aabb.half_dim); x < img.width * (aabb.center.x + aabb.half_dim); x++) {
-            n++;
+    for (int y = min_y; y < max_y; y++) {
+        for (int x = min_x; x < max_x; x++) {
             Color c = GetImageColor(img, x, y);
-            dev_r += (c.r - tree->avg.r) * (c.r - tree->avg.r);
-            dev_g += (c.g - tree->avg.g) * (c.g - tree->avg.g);
-            dev_b += (c.b - tree->avg.b) * (c.b - tree->avg.b);
-            dev_a += (c.a - tree->avg.a) * (c.a - tree->avg.a);
+            dev_r += fabs(c.r - tree->avg.r);
+            dev_g += fabs(c.g - tree->avg.g);
+            dev_b += fabs(c.b - tree->avg.b);
+            dev_a += fabs(c.a - tree->avg.a);
         }
     }
-    tree->err = sqrt(dev_r / n * n + dev_g / n * n + dev_b / n * n + dev_a / n * n); 
+    tree->err = (dev_r + dev_g + dev_b + dev_a) / 4;
 }
 
 qt *qt_create(Image img) {
@@ -135,23 +75,21 @@ qt *qt_create(Image img) {
 
 qt *qt_create_with_bounds(Image img, AABB bounds) {
     qt *ret = malloc(sizeof(qt));
-
     ret->img = img;
     ret->bounds = bounds;
+    ret->depth = 1;
+    ret->parent = NULL;
     ret->ne = NULL;
     ret->se = NULL;
     ret->sw = NULL;
     ret->nw = NULL;
-
-    // init avg and err
     qt_calc_avg_err(ret);
-
     return ret;
 }
 
-qt *qt_create_child(qt *parent, Quad q) {
-    Vector2 center = parent->bounds.center;
-    float half_dim = parent->bounds.half_dim;
+qt *qt_create_child(qt *tree, Quad q) {
+    Vector2 center = tree->bounds.center;
+    float half_dim = tree->bounds.half_dim;
     float quad_dim = half_dim / 2.0f;
     switch(q) {
         case NE:
@@ -174,67 +112,60 @@ qt *qt_create_child(qt *parent, Quad q) {
         printf("failed to create quad_tree_child");
         return NULL;
     };
-    qt *ret = qt_create_with_bounds(parent->img, aabb_init(center, quad_dim));
+    qt *ret = qt_create_with_bounds(tree->img, aabb_init(center, quad_dim));
+    ret->parent = tree;
+    ret->depth = tree->depth + 1;
     return ret;
 }
 
-Quad qt_get_max_err(qt *parent) {
-    if (parent == NULL) return -1;
-    if (parent->ne == NULL) {
-        return parent->err;
-    }
-    float max_err = -1;
-    Quad q = -1;
-    float errs[4];
-    errs[0] = qt_get_max_err(parent->ne);
-    errs[1] = qt_get_max_err(parent->se);
-    errs[2] = qt_get_max_err(parent->sw);
-    errs[3] = qt_get_max_err(parent->nw);
-    for (int i = 0; i < 4; i++) {
-        if (errs[i] > max_err) {
-            max_err = errs[i];
-            q = i;
-        }
-    }
-    return q;
+qt *qt_find_leaf_with_max_err(qt *tree) {
+    if (tree == NULL) return NULL;
+    if (tree->ne == NULL && tree->depth <= QT_MAX_DEPTH) return tree;
+    if (tree->ne == NULL) return NULL;
+    qt *se_max = qt_find_leaf_with_max_err(tree->se);
+    qt *ne_max = qt_find_leaf_with_max_err(tree->ne);
+    qt *sw_max = qt_find_leaf_with_max_err(tree->sw);
+    qt *nw_max = qt_find_leaf_with_max_err(tree->nw);
+    printf("se: %f ", (se_max != NULL) ? se_max->err : -1.0);
+    printf("ne: %f ", (ne_max != NULL) ? ne_max->err : -1.0);
+    printf("sw: %f ", (sw_max != NULL) ? sw_max->err : -1.0);
+    printf("nw: %f ", (nw_max != NULL) ? nw_max->err : -1.0);
+    printf("\n");
+
+    qt *ret = NULL;
+    if (ne_max != NULL) ret = ne_max;
+    if (se_max != NULL && ret->err < se_max->err) ret = se_max;
+    if (sw_max != NULL && ret->err < sw_max->err) ret = sw_max;
+    if (nw_max != NULL && ret->err < nw_max->err) ret = nw_max;
+    return ret;
 }
 
-void qt_subdivide(qt *tree) {
-    if (tree == NULL) return;
-
-    if (tree->ne == NULL) {
+bool qt_subdivide(qt *tree) {
+    if (tree == NULL) return false;
+    if (tree->ne == NULL && tree->depth < QT_MAX_DEPTH) {
         tree->ne = qt_create_child(tree, NE);
         tree->se = qt_create_child(tree, SE);
-        tree->nw = qt_create_child(tree, NW);
         tree->sw = qt_create_child(tree, SW);
-        return;
+        tree->nw = qt_create_child(tree, NW);
+        return true;
     }
-    switch (qt_get_max_err(tree)) {
-        case NE:
-            qt_subdivide(tree->ne);
-        break;
-        case SE:
-            qt_subdivide(tree->se);
-        break;
-        case SW:
-            qt_subdivide(tree->sw);
-        break;
-        case NW:
-            qt_subdivide(tree->nw);
-        break;
-        default:
-        printf("couldn't subdivide");
+    if (tree->depth < QT_MAX_DEPTH) {
+        qt *max = qt_find_leaf_with_max_err(tree);
+        return qt_subdivide(max);
     }
-
-}
-
-float GetRandomFloat(float from, float to) {
-    return from + (to-from)*(float)GetRandomValue(0, INT_MAX) / INT_MAX;
+    return false;
 }
 
 void qt_draw(qt *tree) {
     if (tree == NULL) return;
-    aabb_draw(tree->bounds, tree->avg);
+    AABB box = tree->bounds;
+    DrawRectangle(
+        tree->img.width  * (box.center.x - box.half_dim), 
+        tree->img.height * (box.center.y - box.half_dim),
+        tree->img.width  * (box.half_dim * 2),
+        tree->img.height * (box.half_dim * 2),
+        tree->avg
+    );
     qt_draw(tree->se);
     qt_draw(tree->ne);
     qt_draw(tree->sw);
