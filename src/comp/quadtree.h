@@ -1,7 +1,10 @@
 #ifndef QT_DEF
 #define QT_DEF
 
-#define QT_MAX_DEPTH 10
+#ifndef QT_MAX_DEPTH
+    #define QT_MAX_DEPTH 10
+    #define QT_ERR_THRESHHOLD 100
+#endif
 
 #include "raylib.h"
 #include <math.h>

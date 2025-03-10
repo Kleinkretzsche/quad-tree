@@ -32,8 +32,6 @@ void qt_calc_avg_err(qt *tree) {
     int min_y = fmax(0, img.height * (aabb.center.y - aabb.half_dim));
     int max_y = fmin(img.height, img.height * (aabb.center.y + aabb.half_dim));
 
-    printf("[RANGE] [%d, %d] x [%d %d]\n", min_x, max_x, min_y, max_y);
-
     for (int y = min_y; y < max_y; y++) {
         for (int x = min_x; x < max_x; x++) {
             n++;
@@ -109,7 +107,6 @@ qt *qt_create_child(qt *tree, Quad q) {
             center.y -= quad_dim;
         break;
         default:
-        printf("failed to create quad_tree_child");
         return NULL;
     };
     qt *ret = qt_create_with_bounds(tree->img, aabb_init(center, quad_dim));
@@ -126,11 +123,6 @@ qt *qt_find_leaf_with_max_err(qt *tree) {
     qt *ne_max = qt_find_leaf_with_max_err(tree->ne);
     qt *sw_max = qt_find_leaf_with_max_err(tree->sw);
     qt *nw_max = qt_find_leaf_with_max_err(tree->nw);
-    printf("se: %f ", (se_max != NULL) ? se_max->err : -1.0);
-    printf("ne: %f ", (ne_max != NULL) ? ne_max->err : -1.0);
-    printf("sw: %f ", (sw_max != NULL) ? sw_max->err : -1.0);
-    printf("nw: %f ", (nw_max != NULL) ? nw_max->err : -1.0);
-    printf("\n");
 
     qt *ret = NULL;
     if (ne_max != NULL) ret = ne_max;
@@ -151,7 +143,8 @@ bool qt_subdivide(qt *tree) {
     }
     if (tree->depth < QT_MAX_DEPTH) {
         qt *max = qt_find_leaf_with_max_err(tree);
-        return qt_subdivide(max);
+        if (max != NULL && max->err >= QT_ERR_THRESHHOLD)
+            return qt_subdivide(max);
     }
     return false;
 }

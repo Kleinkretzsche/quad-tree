@@ -2,13 +2,22 @@
 #include <time.h>
 #include <limits.h>
 
+#define QT_MAX_DEPTH 5
+#define QT_ERR_THRESHHOLD 5
+
 #include "raylib.h"
 #include "quadtree.h"
 
-int main(void) {
-    SetTargetFPS(100);
+int main(int argc, char **argv) {
 
-    Image image = LoadImage("resources/fish.png");
+    if (argc < 2) {
+        printf("[USAGE]: ./a.out IMAGE_FILENAME");
+        return 1;
+    }
+    SetTargetFPS(100);
+    Image image = LoadImage(argv[1]);
+
+    SetTargetFPS(100);
 
     int screen_width = image.width;
     int screen_height = image.height;
