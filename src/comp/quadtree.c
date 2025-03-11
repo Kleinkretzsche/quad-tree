@@ -2,6 +2,8 @@
 
 #define SWAP(T, x, y) do { T SWAP = x; x = y; y = SWAP; } while (0)
 
+#define FORQ(q) for(Quad q = 0; q < 4; q++)
+
 Vector2 vec2(float x, float y) {
     return (Vector2){ x, y };
 }
@@ -27,10 +29,10 @@ void qt_calc_avg_err(qt *tree) {
     double avg_a = 0;
     uint64_t n = 0;
 
-    int min_x = fmax(0, img.width * (aabb.center.x - aabb.half_dim));
-    int max_x = fmin(img.width, img.width * (aabb.center.x + aabb.half_dim));
-    int min_y = fmax(0, img.height * (aabb.center.y - aabb.half_dim));
-    int max_y = fmin(img.height, img.height * (aabb.center.y + aabb.half_dim));
+    int min_x =fmax(0, img.width * (aabb.center.x - aabb.half_dim));
+    int max_x =fmin(img.width, img.width * (aabb.center.x + aabb.half_dim));
+    int min_y =fmax(0, img.height * (aabb.center.y - aabb.half_dim));
+    int max_y =fmin(img.height, img.height * (aabb.center.y + aabb.half_dim));
 
     for (int y = min_y; y < max_y; y++) {
         for (int x = min_x; x < max_x; x++) {
@@ -41,12 +43,6 @@ void qt_calc_avg_err(qt *tree) {
             avg_b += c.b / 255.0;
             avg_a += c.a / 255.0;
         }
-    }
-
-    if (n == 0) {
-        tree->avg = (Color){0,0,0,0};
-        tree->err = -1;
-        return;
     }
 
     tree->avg = (Color){avg_r * 255 / n, avg_g * 255 / n, avg_b * 255 / n, avg_a * 255 / n}; 
@@ -77,10 +73,10 @@ qt *qt_create_with_bounds(Image img, AABB bounds) {
     ret->bounds = bounds;
     ret->depth = 1;
     ret->parent = NULL;
-    ret->ne = NULL;
-    ret->se = NULL;
-    ret->sw = NULL;
-    ret->nw = NULL;
+    ret->children[NE] = NULL;
+    ret->children[SE] = NULL;
+    ret->children[SW] = NULL;
+    ret->children[NW] = NULL;
     qt_calc_avg_err(ret);
     return ret;
 }
@@ -115,14 +111,20 @@ qt *qt_create_child(qt *tree, Quad q) {
     return ret;
 }
 
+bool qt_is_leaf(qt *tree) {
+    return tree->children[NE] == NULL;
+}
+
 qt *qt_find_leaf_with_max_err(qt *tree) {
     if (tree == NULL) return NULL;
-    if (tree->ne == NULL && tree->depth <= QT_MAX_DEPTH) return tree;
-    if (tree->ne == NULL) return NULL;
-    qt *se_max = qt_find_leaf_with_max_err(tree->se);
-    qt *ne_max = qt_find_leaf_with_max_err(tree->ne);
-    qt *sw_max = qt_find_leaf_with_max_err(tree->sw);
-    qt *nw_max = qt_find_leaf_with_max_err(tree->nw);
+    if (qt_is_leaf(tree)) {
+        if (tree->depth <= QT_MAX_DEPTH) return tree;
+        else return NULL;
+    }
+    qt *ne_max = qt_find_leaf_with_max_err(tree->children[NE]);
+    qt *se_max = qt_find_leaf_with_max_err(tree->children[SE]);
+    qt *sw_max = qt_find_leaf_with_max_err(tree->children[SW]);
+    qt *nw_max = qt_find_leaf_with_max_err(tree->children[NW]);
 
     qt *ret = NULL;
     if (ne_max != NULL) ret = ne_max;
@@ -134,11 +136,10 @@ qt *qt_find_leaf_with_max_err(qt *tree) {
 
 bool qt_subdivide(qt *tree) {
     if (tree == NULL) return false;
-    if (tree->ne == NULL && tree->depth < QT_MAX_DEPTH) {
-        tree->ne = qt_create_child(tree, NE);
-        tree->se = qt_create_child(tree, SE);
-        tree->sw = qt_create_child(tree, SW);
-        tree->nw = qt_create_child(tree, NW);
+    if (qt_is_leaf(tree) && tree->depth < QT_MAX_DEPTH) {
+        FORQ(q) {
+            tree->children[q] = qt_create_child(tree, q);
+        }
         return true;
     }
     if (tree->depth < QT_MAX_DEPTH) {
@@ -151,17 +152,23 @@ bool qt_subdivide(qt *tree) {
 
 void qt_draw(qt *tree) {
     if (tree == NULL) return;
-    AABB box = tree->bounds;
-    DrawRectangle(
-        tree->img.width  * (box.center.x - box.half_dim), 
-        tree->img.height * (box.center.y - box.half_dim),
-        tree->img.width  * (box.half_dim * 2),
-        tree->img.height * (box.half_dim * 2),
-        tree->avg
-    );
-    qt_draw(tree->se);
-    qt_draw(tree->ne);
-    qt_draw(tree->sw);
-    qt_draw(tree->nw);
+    if (qt_is_leaf(tree)) {
+        AABB box = tree->bounds;
+        DrawRectangle(
+            ceilf(tree->img.width  * (box.center.x - box.half_dim)), 
+            ceilf(tree->img.height * (box.center.y - box.half_dim)),
+            ceilf(tree->img.width  * (box.half_dim * 2)),
+            ceilf(tree->img.height * (box.half_dim * 2)),
+            tree->avg
+        );
+    }
+    FORQ(q) {
+        qt_draw(tree->children[q]);
+    }
 }
 
+void qt_free(qt *tree) {
+    if (tree == NULL) return;
+    FORQ(q) qt_free(tree->children[q]);
+    free(tree);
+}
